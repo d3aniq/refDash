@@ -2,21 +2,19 @@
 <html lang="sv">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Referee Mini Dashboard</title>
+<title>Domar-minidashboard</title>
 <style>
-  :root { --bg:#f8fafc; --fg:#0f172a; --muted:#64748b; --border:#e2e8f0; --card:#fff; --link:#2563eb; }
+  :root { --bg:#f8fafc; --fg:#0f172a; --muted:#64748b; --border:#e2e8f0; --card:#fff; }
   body{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--fg);margin:16px}
   .wrap{max-width:1100px;margin:auto}
   h1{font-size:30px;margin:6px 4px 12px}
   .row{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin:8px 0}
   .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
   .muted{color:var(--muted);font-size:12px;margin-bottom:6px}
-  select,input[type=date]{width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff}
-  button{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer}
+  input[type=date],button{width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer}
   table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
   th,td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left}
   thead{background:#f1f5f9;font-weight:600}
-  a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
   .kpi{font-size:22px;font-weight:700}
   .list{max-height:380px;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--card)}
   .item{display:flex;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer}
@@ -24,17 +22,18 @@
   .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:#e2e8f0;margin-left:6px}
   #filters{position:sticky;top:0;z-index:20;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--border);box-shadow:0 4px 12px rgba(15,23,42,.04)}
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#0f172a; --fg:#f1f5f9; --muted:#94a3b8; --border:#334155; --card:#1e293b; --link:#93c5fd; }
+    :root{ --bg:#0f172a; --fg:#f1f5f9; --muted:#94a3b8; --border:#334155; --card:#1e293b; }
     thead{background:#334155}
     .item:hover{background:#273447}
     #filters{box-shadow:0 4px 12px rgba(0,0,0,.25)}
+    input[type=date],button{background:#0b1220;color:#f1f5f9;border-color:#334155}
   }
 </style>
 
 <div class="wrap">
   <h1>Domar-minidashboard</h1>
 
-  <!-- Filter (sticky) -->
+  <!-- Sticky filter -->
   <div class="row" id="filters">
     <div class="card">
       <div class="muted">Från</div>
@@ -44,13 +43,10 @@
       <div class="muted">Till</div>
       <input type="date" id="to">
     </div>
-    <!-- <div class="card">
-      <div class="muted">Snabbval</div>
-      <div class="row" style="grid-template-columns:1fr 1fr;">
-        <button id="clear">Rensa</button>
-        <button id="season">Denna säsong</button>
-      </div>
-    </div> -->
+    <div class="card">
+      <div class="muted">Filter</div>
+      <button id="clear">Rensa</button>
+    </div>
     <div class="card">
       <div class="muted">Vald domare</div>
       <div id="currentRef" class="kpi">—</div>
@@ -61,7 +57,7 @@
     </div>
   </div>
 
-  <!-- Topplista domare -->
+  <!-- Lista + matchtabell -->
   <div class="row">
     <div class="card">
       <div class="muted">Topplista – matcher per domare (klicka)</div>
@@ -70,8 +66,9 @@
     <div class="card" style="grid-column:span 2;">
       <div class="muted">Matcher (inom datumfilter, för vald domare)</div>
       <table>
-        <!-- <thead><tr><th>Datum</th><th>Serie</th><th>Arena</th><th>Hemma</th><th>Borta</th><th>Länk</th></tr></thead> -->
-        <thead><tr><th>Datum</th><th>Serie</th><th>Arena</th><th>Hemma</th><th>Borta</th><th>Domarkollega</th></tr></thead>
+        <thead><tr>
+          <th>Datum</th><th>Serie</th><th>Arena</th><th>Hemma</th><th>Borta</th><th>Domarkollega</th>
+        </tr></thead>
         <tbody id="rows"><tr><td colspan="6" class="muted">Välj domare i listan.</td></tr></tbody>
       </table>
     </div>
@@ -80,146 +77,86 @@
 
 <script>
 (async function(){
-  // ---- 1) Hämta alla CSV enligt /csv/files.json
-  const fileList = await (await fetch("csv/files.json")).json();
-  const csvTexts = await Promise.all(fileList.map(f=>fetch("csv/"+f).then(r=>r.text())));
+  // 1) Läs alla CSV enligt /csv/files.json
+  const files = await (await fetch("csv/files.json")).json();
+  const texts = await Promise.all(files.map(f=>fetch("csv/"+f).then(r=>r.text())));
 
-  // ---- 2) Minimal CSV-parser (stöd för citattecken)
-  function parseCSV(txt){
-    const rows=[], re=/\s*(?:"([^"]*(?:""[^"]*)*)"|([^,"\r\n]*))\s*(,|\r?\n|$)/g;
-    let m, row=[];
-    function val(a,b){ return (a||b||"").replace(/""/g,'"'); }
-    while((m=re.exec(txt))){
-      row.push(val(m[1],m[2]));
-      if(m[3]===',' ) continue;
-      rows.push(row); row=[];
-      if(m[3]==='') break;
-    }
-    const [head,...body]=rows;
-    return body.map(r=>Object.fromEntries(head.map((h,i)=>[h.trim(), (r[i]??"").trim()])));
+  // 2) Minimal CSV-parser (hanterar citattecken)
+  function parseCSV(s){
+    const out=[], re=/\s*(?:"([^"]*(?:""[^"]*)*)"|([^,"\r\n]*))\s*(,|\r?\n|$)/g; let m,row=[],head;
+    const val=(a,b)=>(a||b||"").replace(/""/g,'"');
+    while((m=re.exec(s))){ row.push(val(m[1],m[2])); if(m[3]!==','){ out.push(row); row=[]; if(!m[3]) break; } }
+    head=out.shift()||[]; return out.map(r=>Object.fromEntries(head.map((h,i)=>[h.trim(),(r[i]??"").trim()])));
   }
 
-  // ---- 3) Normalisera rader
+  // 3) Normalisera poster
   function norm(rec){
-    const g = k => rec[k]??"";
-    const first = s => s.split(/[ T]/)[0]||"";
-    // datum
-    const date = first(g("Date")||g("Datum")||g("MatchDate")||g("Start")||g("Kickoff"));
-    // domare: "Referees" eller Domare1..3
-    let refs = g("Referees")||g("Domare")||g("DomareLista")||"";
-    if(!refs){
-      const c=[g("Domare1"),g("Domare2"),g("Domare3"),g("Referee1"),g("Referee2"),g("Referee3")].filter(Boolean);
-      refs = c.join(",");
-    }
-    const referees = refs.split(/[;,|]/).map(s=>s.trim()).filter(Boolean);
+    const g=k=>rec[k]??""; const first=x=>(x||"").split(/[ T]/)[0];
+    const refsField = (g("Referees")||g("Domare")||g("DomareLista")||"") ||
+                      [g("Domare1"),g("Domare2"),g("Domare3"),g("Referee1"),g("Referee2"),g("Referee3")].filter(Boolean).join(",");
     return {
-      date,
-      series: g("Serie")||g("Series")||g("Competition")||"",
-      arena:  g("Arena")||g("Venue")||g("Hall")||"",
-      home:   g("Home")||g("Hemma")||g("HomeTeam")||g("Hemmalag")||"",
-      away:   g("Away")||g("Borta")||g("AwayTeam")||g("Bortalag")||"",
-      // url:    g("URL")||g("Link")||g("MatchURL")||g("Länk")||"",
-      referees
+      date:first(g("Date")||g("Datum")||g("MatchDate")||g("Start")||g("Kickoff")),
+      series:g("Serie")||g("Series")||g("Competition")||"",
+      arena:g("Arena")||g("Venue")||g("Hall")||"",
+      home:g("Home")||g("Hemma")||g("HomeTeam")||g("Hemmalag")||"",
+      away:g("Away")||g("Borta")||g("AwayTeam")||g("Bortalag")||"",
+      referees: refsField.split(/[;,|]/).map(s=>s.trim()).filter(Boolean)
     };
   }
 
-  const all = csvTexts.flatMap(t=>parseCSV(t).map(norm)).filter(r=>r.date);
+  const all = texts.flatMap(t=>parseCSV(t).map(norm)).filter(r=>r.date);
 
-  // ---- 4) Date range (global) + lås inputs
+  // 4) Globalt datumintervall + lås inputs + presets
   const minDate = all.reduce((a,b)=> a && a<b.date ? a : b.date, all[0]?.date||"");
   const maxDate = all.reduce((a,b)=> a && a>b.date ? a : b.date, all[0]?.date||"");
-  const $from = document.getElementById("from");
-  const $to   = document.getElementById("to");
-  $from.min = $to.min = minDate;
-  $from.max = $to.max = maxDate;
-  $from.value = minDate;
-  $to.value   = maxDate;
+  const $from = document.getElementById("from"), $to = document.getElementById("to");
+  $from.min=$to.min=minDate; $from.max=$to.max=maxDate; $from.value=minDate; $to.value=maxDate;
 
-  // ---- 5) State + helpers
+  // 5) State + helpers
   let currentRef = "";
   const $rows = document.getElementById("rows");
-  const $kpiCount = document.getElementById("kpiCount");
-  const $currentRef = document.getElementById("currentRef");
+  const $kpi = document.getElementById("kpiCount");
+  const $who = document.getElementById("currentRef");
   const $top = document.getElementById("toplist");
 
-  function inRange(d, from, to){
-    const x = d;
-    return (!from || x>=from) && (!to || x<=to);
-  }
+  const inRange = (d,f,t)=> (!f||d>=f) && (!t||d<=t);
 
-  function renderTopList(){
-    const from = $from.value, to = $to.value;
-    const cnt = new Map();
-    for(const m of all){
-      if(!inRange(m.date, from, to)) continue;
-      for(const r of m.referees) cnt.set(r, (cnt.get(r)||0)+1);
-    }
-    const arr = [...cnt.entries()].sort((a,b)=>b[1]-a[1]);
+  function renderTop(){
+    const f=$from.value,t=$to.value, cnt=new Map();
+    for(const m of all){ if(!inRange(m.date,f,t)) continue; for(const r of m.referees) cnt.set(r,(cnt.get(r)||0)+1); }
+    const arr=[...cnt.entries()].sort((a,b)=>b[1]-a[1]);
     if(!arr.length){ $top.textContent="Inga matcher i valt intervall."; return; }
-    $top.innerHTML = arr.map(([name,n]) =>
-      `<div class="item" data-ref="${name}">
-         <span>${name}</span><span class="pill">${n}</span>
-       </div>`).join("");
-    $top.querySelectorAll(".item").forEach(el=>{
-      el.onclick = ()=>{ currentRef = el.dataset.ref; $currentRef.textContent=currentRef; renderMatches(); };
-    });
+    $top.innerHTML=arr.map(([name,n])=>`<div class="item" data-ref="${name}"><span>${name}</span><span class="pill">${n}</span></div>`).join("");
+    $top.querySelectorAll(".item").forEach(el=> el.onclick=()=>{ currentRef=el.dataset.ref; $who.textContent=currentRef; renderMatches(); });
   }
 
   function renderMatches(){
-    const from = $from.value, to = $to.value;
-    const rows = all.filter(m =>
-      (!currentRef || m.referees.includes(currentRef)) && inRange(m.date, from, to)
-    ).sort((a,b)=> (a.date||"").localeCompare(b.date||""));
-    $kpiCount.textContent = rows.length;
-    if(!currentRef){
-      $rows.innerHTML = `<tr><td colspan="6" class="muted">Välj domare i listan.</td></tr>`;
-      return;
-    }
-    if(!rows.length){
-      $rows.innerHTML = `<tr><td colspan="6" class="muted">Inga matcher för ${currentRef} i detta intervall.</td></tr>`;
-      return;
-    }
-    // $rows.innerHTML = rows.map(m=>`
-    //   <tr>
-    //     <td>${m.date}</td><td>${m.series}</td><td>${m.arena}</td>
-    //     <td>${m.home}</td><td>${m.away}</td>
-    //     <td>${m.url?`<a href="${m.url}" target="_blank" rel="noopener">Match</a>`:"—"}</td>
-    //   </tr>`).join("");
-    $rows.innerHTML = rows.map(m=>{
-      const others = (m.referees||[]).filter(r=>r!==currentRef);
-      return `
-        <tr>
-          <td>${m.date}</td>
-          <td>${m.series}</td>
-          <td>${m.arena}</td>
-          <td>${m.home}</td>
-          <td>${m.away}</td>
-          <td>${others.join(", ") || "—"}</td>
-        </tr>`;
+    const f=$from.value,t=$to.value;
+    const rows=all.filter(m=>(!currentRef||m.referees.includes(currentRef)) && inRange(m.date,f,t))
+                  .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+    $kpi.textContent=rows.length;
+    if(!currentRef){ $rows.innerHTML=`<tr><td colspan="6" class="muted">Välj domare i listan.</td></tr>`; return; }
+    if(!rows.length){ $rows.innerHTML=`<tr><td colspan="6" class="muted">Inga matcher för ${currentRef} i detta intervall.</td></tr>`; return; }
+    $rows.innerHTML=rows.map(m=>{
+      const others=(m.referees||[]).filter(r=>r!==currentRef);
+      return `<tr>
+        <td>${m.date}</td><td>${m.series}</td><td>${m.arena}</td>
+        <td>${m.home}</td><td>${m.away}</td><td>${others.join(", ")||"—"}</td>
+      </tr>`;
     }).join("");
-
   }
 
-  // ---- 6) UI events
-  document.getElementById("clear").onclick = ()=>{ currentRef=""; $currentRef.textContent="—"; $from.value=minDate; $to.value=maxDate; renderTopList(); renderMatches(); };
-  document.getElementById("season").onclick = ()=>{
-    const y = new Date(minDate).getFullYear();
-    $from.value = `${y}-08-01`; $to.value = `${y+1}-05-31`;
-    // klampa till globala gränser
-    if($from.value<minDate) $from.value=minDate;
-    if($to.value>maxDate) $to.value=maxDate;
-    renderTopList(); renderMatches();
-  };
-  [$from,$to].forEach(el=> el.addEventListener("change", ()=>{
+  // 6) Events
+  document.getElementById("clear").onclick=()=>{ currentRef=""; $who.textContent="—"; $from.value=minDate; $to.value=maxDate; renderTop(); renderMatches(); };
+  [$from,$to].forEach(el=>el.addEventListener("change",()=>{
     if($from.value<minDate) $from.value=minDate;
     if($to.value>maxDate) $to.value=maxDate;
     if($from.value>$to.value) $from.value=$to.value;
-    renderTopList(); renderMatches();
+    renderTop(); renderMatches();
   }));
 
-  // ---- 7) första render
-  renderTopList();
-  renderMatches();
+  // 7) Första render
+  renderTop(); renderMatches();
 })();
 </script>
 </html>
