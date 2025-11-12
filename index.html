@@ -4,29 +4,38 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Referee Mini Dashboard</title>
 <style>
-  body{font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial; margin:16px; color:#0f172a; background:#f8fafc}
-  .wrap{max-width:1000px; margin:auto}
-  .row{display:grid; gap:8px; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); margin:8px 0}
-  .card{background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:12px}
-  .kpi{font-size:22px; font-weight:600}
-  table{width:100%; border-collapse:collapse; background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden}
-  th,td{padding:8px 10px; border-bottom:1px solid #e2e8f0; text-align:left}
-  thead{background:#f1f5f9; font-weight:600}
-  .muted{color:#64748b}
-  a{color:#2563eb; text-decoration:none}
-  a:hover{text-decoration:underline}
-  .pill{display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; background:#e2e8f0; margin-left:6px}
+  :root { --bg:#f8fafc; --fg:#0f172a; --muted:#64748b; --border:#e2e8f0; --card:#fff; --link:#2563eb; }
+  body{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--fg);margin:16px}
+  .wrap{max-width:1100px;margin:auto}
+  h1{font-size:30px;margin:6px 4px 12px}
+  .row{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin:8px 0}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+  .muted{color:var(--muted);font-size:12px;margin-bottom:6px}
+  select,input[type=date]{width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff}
+  button{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left}
+  thead{background:#f1f5f9;font-weight:600}
+  a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
+  .kpi{font-size:22px;font-weight:700}
+  .list{max-height:380px;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+  .item{display:flex;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer}
+  .item:hover{background:#f1f5f9}
+  .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:#e2e8f0;margin-left:6px}
+  #filters{position:sticky;top:0;z-index:20;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--border);box-shadow:0 4px 12px rgba(15,23,42,.04)}
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f172a; --fg:#f1f5f9; --muted:#94a3b8; --border:#334155; --card:#1e293b; --link:#93c5fd; }
+    thead{background:#334155}
+    .item:hover{background:#273447}
+    #filters{box-shadow:0 4px 12px rgba(0,0,0,.25)}
+  }
 </style>
 
 <div class="wrap">
-  <h1>Referee Mini Dashboard</h1>
+  <h1>Domar-minidashboard</h1>
 
-  <!-- Filter -->
-  <div class="row">
-    <div class="card">
-      <div class="muted">Domare</div>
-      <select id="ref"></select>
-    </div>
+  <!-- Filter (sticky) -->
+  <div class="row" id="filters">
     <div class="card">
       <div class="muted">Från</div>
       <input type="date" id="from">
@@ -39,159 +48,164 @@
       <div class="muted">Snabbval</div>
       <div class="row" style="grid-template-columns:1fr 1fr;">
         <button id="clear">Rensa</button>
-        <button id="thisSeason">Denna säsong</button>
+        <button id="season">Denna säsong</button>
       </div>
+    </div>
+    <div class="card">
+      <div class="muted">Vald domare</div>
+      <div id="currentRef" class="kpi">—</div>
+    </div>
+    <div class="card">
+      <div class="muted">Matcher i vyn</div>
+      <div id="kpiCount" class="kpi">—</div>
     </div>
   </div>
 
-  <!-- KPIs -->
+  <!-- Topplista domare -->
   <div class="row">
-    <div class="card"><div class="muted">Matcher i vyn</div><div id="kpiMatches" class="kpi">—</div></div>
-    <div class="card"><div class="muted">Vald domare</div><div id="kpiRef" class="kpi">—</div></div>
-    <div class="card"><div class="muted">Topp-partner</div><div id="kpiPartner" class="kpi">—</div></div>
+    <div class="card">
+      <div class="muted">Topplista – matcher per domare (klicka)</div>
+      <div id="toplist" class="list">Laddar…</div>
+    </div>
+    <div class="card" style="grid-column:span 2;">
+      <div class="muted">Matcher (inom datumfilter, för vald domare)</div>
+      <table>
+        <thead><tr><th>Datum</th><th>Serie</th><th>Arena</th><th>Hemma</th><th>Borta</th><th>Länk</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="6" class="muted">Välj domare i listan.</td></tr></tbody>
+      </table>
+    </div>
   </div>
-
-  <!-- Matches table -->
-  <h3>Matcher</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Datum</th><th>Serie</th><th>Arena</th><th>Hemma</th><th>Borta</th><th>Länk</th>
-      </tr>
-    </thead>
-    <tbody id="rows"><tr><td colspan="6" class="muted">Laddar…</td></tr></tbody>
-  </table>
-
-  <!-- Optional aggregate when ingen domare vald -->
-  <h3 id="aggTitle" style="display:none">Matcher per domare</h3>
-  <table id="aggTable" style="display:none">
-    <thead><tr><th>Domare</th><th>Matcher</th></tr></thead>
-    <tbody id="aggRows"></tbody>
-  </table>
 </div>
 
 <script>
 (async function(){
-  const res = await fetch("./data.json");
-  const data = await res.json();
+  // ---- 1) Hämta alla CSV enligt /csv/files.json
+  const fileList = await (await fetch("csv/files.json")).json();
+  const csvTexts = await Promise.all(fileList.map(f=>fetch("csv/"+f).then(r=>r.text())));
 
-  // Elements
-  const selRef = document.getElementById("ref");
-  const inputFrom = document.getElementById("from");
-  const inputTo = document.getElementById("to");
-  const btnClear = document.getElementById("clear");
-  const btnSeason = document.getElementById("thisSeason");
-
-  const kpiMatches = document.getElementById("kpiMatches");
-  const kpiRef = document.getElementById("kpiRef");
-  const kpiPartner = document.getElementById("kpiPartner");
-
-  const rows = document.getElementById("rows");
-  const aggTitle = document.getElementById("aggTitle");
-  const aggTable = document.getElementById("aggTable");
-  const aggRows = document.getElementById("aggRows");
-
-  // Populate referee select
-  const refs = ["(alla)", ...data.all_referees];
-  selRef.innerHTML = refs.map(r => `<option value="${r}">${r}</option>`).join("");
-
-  // Defaults
-  inputFrom.value = data.date_min || "";
-  inputTo.value = data.date_max || "";
-
-  // Events
-  [selRef, inputFrom, inputTo].forEach(el => el.addEventListener("change", render));
-  btnClear.addEventListener("click", () => { selRef.value="(alla)"; inputFrom.value=""; inputTo.value=""; render(); });
-  btnSeason.addEventListener("click", () => {
-    // enkel “säsong”: från 1 aug till 31 maj runt aktuell period i data
-    const min = data.date_min || "";
-    const yr = (min ? new Date(min).getFullYear() : new Date().getFullYear());
-    inputFrom.value = `${yr}-08-01`;
-    inputTo.value = `${yr+1}-05-31`;
-    render();
-  });
-
-  function withinDate(d, from, to){
-    if(!d) return false;
-    const x = new Date(d);
-    if(from && x < new Date(from)) return false;
-    if(to && x > new Date(to)) return false;
-    return true;
+  // ---- 2) Minimal CSV-parser (stöd för citattecken)
+  function parseCSV(txt){
+    const rows=[], re=/\s*(?:"([^"]*(?:""[^"]*)*)"|([^,"\r\n]*))\s*(,|\r?\n|$)/g;
+    let m, row=[];
+    function val(a,b){ return (a||b||"").replace(/""/g,'"'); }
+    while((m=re.exec(txt))){
+      row.push(val(m[1],m[2]));
+      if(m[3]===',' ) continue;
+      rows.push(row); row=[];
+      if(m[3]==='') break;
+    }
+    const [head,...body]=rows;
+    return body.map(r=>Object.fromEntries(head.map((h,i)=>[h.trim(), (r[i]??"").trim()])));
   }
 
-  function render(){
-    const ref = selRef.value || "(alla)";
-    const from = inputFrom.value || "";
-    const to = inputTo.value || "";
+  // ---- 3) Normalisera rader
+  function norm(rec){
+    const g = k => rec[k]??"";
+    const first = s => s.split(/[ T]/)[0]||"";
+    // datum
+    const date = first(g("Date")||g("Datum")||g("MatchDate")||g("Start")||g("Kickoff"));
+    // domare: "Referees" eller Domare1..3
+    let refs = g("Referees")||g("Domare")||g("DomareLista")||"";
+    if(!refs){
+      const c=[g("Domare1"),g("Domare2"),g("Domare3"),g("Referee1"),g("Referee2"),g("Referee3")].filter(Boolean);
+      refs = c.join(",");
+    }
+    const referees = refs.split(/[;,|]/).map(s=>s.trim()).filter(Boolean);
+    return {
+      date,
+      series: g("Serie")||g("Series")||g("Competition")||"",
+      arena:  g("Arena")||g("Venue")||g("Hall")||"",
+      home:   g("Home")||g("Hemma")||g("HomeTeam")||g("Hemmalag")||"",
+      away:   g("Away")||g("Borta")||g("AwayTeam")||g("Bortalag")||"",
+      url:    g("URL")||g("Link")||g("MatchURL")||g("Länk")||"",
+      referees
+    };
+  }
 
-    // Filter
-    const filtered = data.matches.filter(m=>{
-      if(from || to){
-        if(!withinDate(m.date, from, to)) return false;
-      }
-      if(ref !== "(alla)" && !(m.referees||[]).includes(ref)) return false;
-      return true;
+  const all = csvTexts.flatMap(t=>parseCSV(t).map(norm)).filter(r=>r.date);
+
+  // ---- 4) Date range (global) + lås inputs
+  const minDate = all.reduce((a,b)=> a && a<b.date ? a : b.date, all[0]?.date||"");
+  const maxDate = all.reduce((a,b)=> a && a>b.date ? a : b.date, all[0]?.date||"");
+  const $from = document.getElementById("from");
+  const $to   = document.getElementById("to");
+  $from.min = $to.min = minDate;
+  $from.max = $to.max = maxDate;
+  $from.value = minDate;
+  $to.value   = maxDate;
+
+  // ---- 5) State + helpers
+  let currentRef = "";
+  const $rows = document.getElementById("rows");
+  const $kpiCount = document.getElementById("kpiCount");
+  const $currentRef = document.getElementById("currentRef");
+  const $top = document.getElementById("toplist");
+
+  function inRange(d, from, to){
+    const x = d;
+    return (!from || x>=from) && (!to || x<=to);
+  }
+
+  function renderTopList(){
+    const from = $from.value, to = $to.value;
+    const cnt = new Map();
+    for(const m of all){
+      if(!inRange(m.date, from, to)) continue;
+      for(const r of m.referees) cnt.set(r, (cnt.get(r)||0)+1);
+    }
+    const arr = [...cnt.entries()].sort((a,b)=>b[1]-a[1]);
+    if(!arr.length){ $top.textContent="Inga matcher i valt intervall."; return; }
+    $top.innerHTML = arr.map(([name,n]) =>
+      `<div class="item" data-ref="${name}">
+         <span>${name}</span><span class="pill">${n}</span>
+       </div>`).join("");
+    $top.querySelectorAll(".item").forEach(el=>{
+      el.onclick = ()=>{ currentRef = el.dataset.ref; $currentRef.textContent=currentRef; renderMatches(); };
     });
-
-    // KPIs
-    kpiMatches.textContent = filtered.length || "0";
-    kpiRef.textContent = ref === "(alla)" ? "—" : ref;
-
-    // Topp-partner om domare vald
-    if(ref !== "(alla)"){
-      const count = {};
-      for(const m of filtered){
-        const partners = (m.referees||[]).filter(x=>x!==ref);
-        for(const p of partners) count[p] = (count[p]||0)+1;
-      }
-      const top = Object.entries(count).sort((a,b)=>b[1]-a[1])[0];
-      kpiPartner.innerHTML = top ? `${top[0]} <span class="pill">${top[1]}</span>` : "—";
-    } else {
-      kpiPartner.textContent = "—";
-    }
-
-    // Tabell
-    if(filtered.length===0){
-      rows.innerHTML = `<tr><td colspan="6" class="muted">Inga matcher i vald vy.</td></tr>`;
-    } else {
-      rows.innerHTML = filtered
-        .sort((a,b)=>(a.date||"").localeCompare(b.date||""))
-        .map(m=>`<tr>
-          <td>${m.date||""}</td>
-          <td>${m.series||""}</td>
-          <td>${m.arena||""}</td>
-          <td>${m.home||""}</td>
-          <td>${m.away||""}</td>
-          <td>${m.url?`<a href="${m.url}" target="_blank" rel="noopener">Match</a>`:"—"}</td>
-        </tr>`).join("");
-    }
-
-    // Enkel sammanställning per domare när ingen domare vald
-    if(ref === "(alla)"){
-      const cnt = {};
-      for(const m of filtered){
-        for(const r of (m.referees||[])){
-          cnt[r] = (cnt[r]||0)+1;
-        }
-      }
-      const list = Object.entries(cnt).sort((a,b)=>b[1]-a[1]);
-      if(list.length){
-        aggTitle.style.display = "";
-        aggTable.style.display = "";
-        aggRows.innerHTML = list.map(([r,n])=>`<tr><td>${r}</td><td>${n}</td></tr>`).join("");
-      } else {
-        aggTitle.style.display = "none";
-        aggTable.style.display = "none";
-        aggRows.innerHTML = "";
-      }
-    } else {
-      aggTitle.style.display = "none";
-      aggTable.style.display = "none";
-      aggRows.innerHTML = "";
-    }
   }
 
-  render();
+  function renderMatches(){
+    const from = $from.value, to = $to.value;
+    const rows = all.filter(m =>
+      (!currentRef || m.referees.includes(currentRef)) && inRange(m.date, from, to)
+    ).sort((a,b)=> (a.date||"").localeCompare(b.date||""));
+    $kpiCount.textContent = rows.length;
+    if(!currentRef){
+      $rows.innerHTML = `<tr><td colspan="6" class="muted">Välj domare i listan.</td></tr>`;
+      return;
+    }
+    if(!rows.length){
+      $rows.innerHTML = `<tr><td colspan="6" class="muted">Inga matcher för ${currentRef} i detta intervall.</td></tr>`;
+      return;
+    }
+    $rows.innerHTML = rows.map(m=>`
+      <tr>
+        <td>${m.date}</td><td>${m.series}</td><td>${m.arena}</td>
+        <td>${m.home}</td><td>${m.away}</td>
+        <td>${m.url?`<a href="${m.url}" target="_blank" rel="noopener">Match</a>`:"—"}</td>
+      </tr>`).join("");
+  }
+
+  // ---- 6) UI events
+  document.getElementById("clear").onclick = ()=>{ currentRef=""; $currentRef.textContent="—"; $from.value=minDate; $to.value=maxDate; renderTopList(); renderMatches(); };
+  document.getElementById("season").onclick = ()=>{
+    const y = new Date(minDate).getFullYear();
+    $from.value = `${y}-08-01`; $to.value = `${y+1}-05-31`;
+    // klampa till globala gränser
+    if($from.value<minDate) $from.value=minDate;
+    if($to.value>maxDate) $to.value=maxDate;
+    renderTopList(); renderMatches();
+  };
+  [$from,$to].forEach(el=> el.addEventListener("change", ()=>{
+    if($from.value<minDate) $from.value=minDate;
+    if($to.value>maxDate) $to.value=maxDate;
+    if($from.value>$to.value) $from.value=$to.value;
+    renderTopList(); renderMatches();
+  }));
+
+  // ---- 7) första render
+  renderTopList();
+  renderMatches();
 })();
 </script>
 </html>
