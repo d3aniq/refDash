@@ -5,47 +5,44 @@
 <title>Domar-minidashboard</title>
 <style>
   :root { --bg:#f8fafc; --fg:#0f172a; --muted:#64748b; --border:#e2e8f0; --card:#fff; }
-  body{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--fg);margin:16px}
+  body{font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--fg);margin:14px}
   .wrap{max-width:1100px;margin:auto}
-  h1{font-size:30px;margin:6px 4px 12px}
-  .row{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin:8px 0}
+  h1{font-size:28px;margin:6px 4px 12px}
+  .row{display:grid;gap:10px;grid-template-columns:1fr; margin:8px 0}
+  @media (min-width:800px){ .row.filters{grid-template-columns:repeat(4,minmax(0,1fr));} }
   .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
   .muted{color:var(--muted);font-size:12px;margin-bottom:6px}
-  input[type=date],button{width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer}
+  input[type=date]{width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;background:#fff}
   table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-  th,td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left}
-  thead{background:#f1f5f9;font-weight:600}
-  .kpi{font-size:22px;font-weight:700}
-  .list{max-height:380px;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--card)}
-  .item{display:flex;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left}
+  thead{background:#f1f5f9;font-weight:700}
+  .kpi{font-size:22px;font-weight:800}
+  .list{max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+  .item{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer}
   .item:hover{background:#f1f5f9}
-  .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:#e2e8f0;margin-left:6px}
+  .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:#e2e8f0;margin-left:8px}
   #filters{position:sticky;top:0;z-index:20;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--border);box-shadow:0 4px 12px rgba(15,23,42,.04)}
   @media (prefers-color-scheme: dark){
     :root{ --bg:#0f172a; --fg:#f1f5f9; --muted:#94a3b8; --border:#334155; --card:#1e293b; }
     thead{background:#334155}
     .item:hover{background:#273447}
     #filters{box-shadow:0 4px 12px rgba(0,0,0,.25)}
-    input[type=date],button{background:#0b1220;color:#f1f5f9;border-color:#334155}
+    input[type=date]{background:#0b1220;color:#f1f5f9;border-color:#334155}
   }
 </style>
 
 <div class="wrap">
   <h1>Domar-minidashboard</h1>
 
-  <!-- Sticky filter -->
-  <div class="row" id="filters">
+  <!-- Sticky filter, nu: Från, Till, Vald domare, Matcher i vyn -->
+  <div class="row filters" id="filters">
     <div class="card">
       <div class="muted">Från</div>
-      <input type="date" id="from">
+      <input type="date" id="from" aria-label="Från datum">
     </div>
     <div class="card">
       <div class="muted">Till</div>
-      <input type="date" id="to">
-    </div>
-    <div class="card">
-      <div class="muted">Filter</div>
-      <button id="clear">Rensa</button>
+      <input type="date" id="to" aria-label="Till datum">
     </div>
     <div class="card">
       <div class="muted">Vald domare</div>
@@ -63,7 +60,7 @@
       <div class="muted">Topplista – matcher per domare (klicka)</div>
       <div id="toplist" class="list">Laddar…</div>
     </div>
-    <div class="card" style="grid-column:span 2;">
+    <div class="card" style="grid-column:1;">
       <div class="muted">Matcher (inom datumfilter, för vald domare)</div>
       <table>
         <thead><tr>
@@ -77,11 +74,11 @@
 
 <script>
 (async function(){
-  // 1) Läs alla CSV enligt /csv/files.json
+  // -- Läs alla CSV via /csv/files.json
   const files = await (await fetch("csv/files.json")).json();
   const texts = await Promise.all(files.map(f=>fetch("csv/"+f).then(r=>r.text())));
 
-  // 2) Minimal CSV-parser (hanterar citattecken)
+  // -- Minimal CSV-parser (stöd för citattecken)
   function parseCSV(s){
     const out=[], re=/\s*(?:"([^"]*(?:""[^"]*)*)"|([^,"\r\n]*))\s*(,|\r?\n|$)/g; let m,row=[],head;
     const val=(a,b)=>(a||b||"").replace(/""/g,'"');
@@ -89,7 +86,7 @@
     head=out.shift()||[]; return out.map(r=>Object.fromEntries(head.map((h,i)=>[h.trim(),(r[i]??"").trim()])));
   }
 
-  // 3) Normalisera poster
+  // -- Normalisera poster från olika CSV-varianter
   function norm(rec){
     const g=k=>rec[k]??""; const first=x=>(x||"").split(/[ T]/)[0];
     const refsField = (g("Referees")||g("Domare")||g("DomareLista")||"") ||
@@ -106,13 +103,13 @@
 
   const all = texts.flatMap(t=>parseCSV(t).map(norm)).filter(r=>r.date);
 
-  // 4) Globalt datumintervall + lås inputs + presets
+  // -- Globalt datumintervall från data
   const minDate = all.reduce((a,b)=> a && a<b.date ? a : b.date, all[0]?.date||"");
   const maxDate = all.reduce((a,b)=> a && a>b.date ? a : b.date, all[0]?.date||"");
   const $from = document.getElementById("from"), $to = document.getElementById("to");
+  // Lås fälten till spannet och preset:a
   $from.min=$to.min=minDate; $from.max=$to.max=maxDate; $from.value=minDate; $to.value=maxDate;
 
-  // 5) State + helpers
   let currentRef = "";
   const $rows = document.getElementById("rows");
   const $kpi = document.getElementById("kpiCount");
@@ -127,14 +124,15 @@
     const arr=[...cnt.entries()].sort((a,b)=>b[1]-a[1]);
     if(!arr.length){ $top.textContent="Inga matcher i valt intervall."; return; }
     $top.innerHTML=arr.map(([name,n])=>`<div class="item" data-ref="${name}"><span>${name}</span><span class="pill">${n}</span></div>`).join("");
-    $top.querySelectorAll(".item").forEach(el=> el.onclick=()=>{ currentRef=el.dataset.ref; $who.textContent=currentRef; renderMatches(); });
+    $top.querySelectorAll(".item").forEach(el=> el.onclick=()=>{ currentRef=el.dataset.ref; $who.textContent=currentRef; renderMatches(); window.scrollTo({top:document.getElementById('filters').offsetTop,behavior:'smooth'}); });
   }
 
   function renderMatches(){
     const f=$from.value,t=$to.value;
     const rows=all.filter(m=>(!currentRef||m.referees.includes(currentRef)) && inRange(m.date,f,t))
                   .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
-    $kpi.textContent=rows.length;
+    // KPI visar endast när domare vald
+    $kpi.textContent = currentRef ? rows.length : "—";
     if(!currentRef){ $rows.innerHTML=`<tr><td colspan="6" class="muted">Välj domare i listan.</td></tr>`; return; }
     if(!rows.length){ $rows.innerHTML=`<tr><td colspan="6" class="muted">Inga matcher för ${currentRef} i detta intervall.</td></tr>`; return; }
     $rows.innerHTML=rows.map(m=>{
@@ -146,16 +144,15 @@
     }).join("");
   }
 
-  // 6) Events
-  document.getElementById("clear").onclick=()=>{ currentRef=""; $who.textContent="—"; $from.value=minDate; $to.value=maxDate; renderTop(); renderMatches(); };
+  // Klampa datum direkt vid ändring (Till kan aldrig gå över maxDate)
   [$from,$to].forEach(el=>el.addEventListener("change",()=>{
     if($from.value<minDate) $from.value=minDate;
-    if($to.value>maxDate) $to.value=maxDate;
+    if($to.value>maxDate)   $to.value=maxDate;   // <- viktigt: aldrig senare än data
     if($from.value>$to.value) $from.value=$to.value;
     renderTop(); renderMatches();
   }));
 
-  // 7) Första render
+  // Första render
   renderTop(); renderMatches();
 })();
 </script>
