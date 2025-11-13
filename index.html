@@ -5,25 +5,23 @@
 <title>Innebandy - domarstatistik</title>
 
 <style>
+  /* ===== Lätt, modern palett (endast ljust tema) ===== */
   :root{
     --bg:#f7f9fc; --card:#ffffff; --text:#0f172a; --muted:#6b7280; --border:#e6e9f2;
-    --accent:#6d28d9;
-    --accent-2:#9333ea;
-    --accent-weak:#ede9fe;
+    --accent:#6d28d9;      /* indigo-violett */
+    --accent-2:#9333ea;    /* gradientslut */
+    --accent-weak:#ede9fe; /* bakgrundston */
   }
 
   *{box-sizing:border-box}
-  html,body{
-    max-width:100%;
-    overflow-x:hidden;
-  }
   body{
     margin:14px;
     font:15px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;
     color:var(--text); background:var(--bg);
   }
-  .wrap{max-width:1100px;margin:auto;width:100%;}
+  .wrap{max-width:1100px;margin:auto}
 
+  /* Titel med gradient */
   h1{
     font-size:30px;margin:14px 0 18px;text-align:center;font-weight:900;letter-spacing:.4px;
     background:linear-gradient(90deg,var(--accent),var(--accent-2));
@@ -52,6 +50,7 @@
     box-shadow:0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent);
   }
 
+  /* Dropdown för vald domare */
   .ref-select{
     width:100%;
     padding:6px 0;
@@ -62,24 +61,26 @@
     font-weight:800;
     outline:none;
   }
+  .ref-select:focus{
+    outline:none;
+  }
 
+  /* Tabell */
   .table-wrap{
     width:100%;
-    overflow-x:hidden;
+    overflow-x:hidden;           /* inget som sticker ut horisontellt */
   }
   table{
     width:100%;
     border-collapse:collapse;background:var(--card);
     border:1px solid var(--border);border-radius:16px;overflow:hidden;
+    table-layout:auto;
   }
   thead{background:color-mix(in oklab,var(--accent-weak) 30%, var(--card));color:var(--accent)}
-  th,td{
-    padding:11px 12px;
-    border-bottom:1px solid var(--border);
-    text-align:left;
-  }
+  th,td{padding:11px 12px;border-bottom:1px solid var(--border);text-align:left}
   th{font-weight:800;text-transform:uppercase;letter-spacing:.3px}
 
+  /* Datumkolumn – bredare och ingen radbrytning (desktop) */
   th:first-child, td:first-child{
     white-space:nowrap;
     width:120px;
@@ -120,8 +121,8 @@
     }
     .card{
       padding:10px 12px;
-      border-radius:12px;
-      box-shadow:0 2px 8px rgba(0,0,0,.04);
+      border-radius:14px;
+      box-shadow:0 2px 8px rgba(0,0,0,.05);
     }
     .kpi{
       font-size:18px;
@@ -130,41 +131,60 @@
       max-height:320px;
     }
     th,td{
-      padding:7px 8px;
       font-size:13px;
+      padding:8px 8px;
     }
     .ref-select{
       font-size:16px;
     }
 
-    /* Gör tabellen till "kort" på mobil */
-    table, thead, tbody, th, tr{
+    /* --- MATCHKORT (MOBILE LAYOUT) --- */
+    .table-wrap table{
+      border:none;
+    }
+    thead{
+      display:none;   /* Dölj tabellhuvud på mobil */
+    }
+
+    tbody tr{
       display:block;
-      width:100%;
+      background:var(--card);
+      margin-bottom:14px;
+      border-radius:14px;
+      padding:10px 12px;
+      box-shadow:0 3px 10px rgba(0,0,0,.08); /* box shadow per kort */
+      border:1px solid var(--border);
     }
-    thead{display:none;}                /* dölj headern */
-    tbody{display:block;}
-    tr{
-      margin-bottom:10px;
-      border-bottom:1px solid var(--border);
-    }
-    td{
+
+    tbody td{
       display:flex;
       justify-content:space-between;
-      gap:8px;
+      padding:6px 4px;
       border-bottom:none;
-      padding:4px 0;
       word-break:break-word;
     }
-    td::before{
+
+    /* Datum – egen rad med värdet till höger */
+    td[data-label="Datum"]{
+      font-weight:700;
+      font-size:14px;
+      padding-bottom:10px;
+      margin-bottom:6px;
+      border-bottom:1px solid var(--border);
+    }
+    td[data-label="Datum"]::before{
+      content:"Datum";
+      font-weight:700;
+      color:var(--accent);
+      margin-right:10px;
+    }
+
+    /* Övriga fält – label till vänster, värde till höger */
+    td:not([data-label="Datum"])::before{
       content:attr(data-label);
       font-weight:600;
       color:var(--muted);
-      margin-right:8px;
-      text-transform:none;
-    }
-    td[data-label="Datum"]{
-      white-space:nowrap;
+      margin-right:10px;
     }
   }
 </style>
@@ -172,6 +192,7 @@
 <div class="wrap">
   <h1>Innebandy - domarstatistik</h1>
 
+  <!-- Filter -->
   <div class="row filters" id="filters">
     <div class="card">
       <div class="muted">Från datum</div>
@@ -193,6 +214,7 @@
     </div>
   </div>
 
+  <!-- Lista + tabell -->
   <div class="row">
     <div class="card">
       <div class="muted">Antal matcher per domare (inom datumintervall)</div>
@@ -205,7 +227,9 @@
           <thead><tr>
             <th>Datum</th><th>Serie</th><th>Hemmalag</th><th>Bortalag</th><th>Arena</th><th>Domarkollega</th>
           </tr></thead>
-          <tbody id="rows"><tr><td colspan="6" class="muted">Välj domare i listan eller i menyn.</td></tr></tbody>
+          <tbody id="rows">
+            <tr><td colspan="6" class="muted">Välj domare i listan eller i menyn.</td></tr>
+          </tbody>
         </table>
       </div>
     </div>
@@ -217,17 +241,27 @@
   const files = await (await fetch("csv/files.json")).json();
   const texts = await Promise.all(files.map(f=>fetch("csv/"+f).then(r=>r.text())));
 
+  // Minimal CSV-parser
   function parseCSV(s){
     const out=[], re=/\s*(?:"([^"]*(?:""[^"]*)*)"|([^,"\r\n]*))\s*(,|\r?\n|$)/g; let m,row=[],head;
     const val=(a,b)=>(a||b||"").replace(/""/g,'"');
-    while((m=re.exec(s))){ row.push(val(m[1],m[2])); if(m[3]!==','){ out.push(row); row=[]; if(!m[3]) break; } }
-    head=out.shift()||[]; return out.map(r=>Object.fromEntries(head.map((h,i)=>[h.trim(),(r[i]??"").trim()])));
+    while((m=re.exec(s))){
+      row.push(val(m[1],m[2]));
+      if(m[3]!==','){
+        out.push(row); row=[];
+        if(!m[3]) break;
+      }
+    }
+    head=out.shift()||[];
+    return out.map(r=>Object.fromEntries(head.map((h,i)=>[h.trim(),(r[i]??"").trim()])));
   }
 
+  // Normalisering
   function norm(rec){
     const g=k=>rec[k]??""; const first=x=>(x||"").split(/[ T]/)[0];
     const refs=(g("Referees")||g("Domare")||g("DomareLista")||"") ||
-               [g("Domare1"),g("Domare2"),g("Domare3"),g("Referee1"),g("Referee2"),g("Referee3")].filter(Boolean).join(",");
+               [g("Domare1"),g("Domare2"),g("Domare3"),g("Referee1"),g("Referee2"),g("Referee3")]
+               .filter(Boolean).join(",");
     return {
       date:first(g("Date")||g("Datum")||g("MatchDate")||g("Start")||g("Kickoff")),
       series:g("Serie")||g("Series")||g("Competition")||"",
@@ -240,6 +274,7 @@
 
   const all = texts.flatMap(t=>parseCSV(t).map(norm)).filter(r=>r.date);
 
+  // Dataintervall: max låst till 2025-10-31
   const hardMax = "2025-10-31";
   const minDate = all.reduce((a,b)=> a && a<b.date ? a : b.date, all[0]?.date||"");
   const rawMax = all.reduce((a,b)=> a && a>b.date ? a : b.date, all[0]?.date||"");
@@ -262,6 +297,7 @@
     if($from.value>$to.value) $from.value=$to.value;
   }
 
+  // Unik lista domare för dropdown (alfabetiskt)
   const allRefs = [...new Set(all.flatMap(m=>m.referees))].sort((a,b)=>a.localeCompare(b,"sv"));
   $refSelect.innerHTML =
     '<option value="">(välj domare)</option>' +
@@ -328,11 +364,13 @@
     }).join("");
   }
 
+  // Datumändringar
   ["input","change","blur"].forEach(evt=>{
     $from.addEventListener(evt, ()=>{ clamp(); renderTop(); renderMatches(); });
     $to.addEventListener(evt,   ()=>{ clamp(); renderTop(); renderMatches(); });
   });
 
+  // Dropdownändring – synka listan + scrolla till domaren
   $refSelect.addEventListener("change", ()=>{
     currentRef = $refSelect.value || "";
 
