@@ -52,11 +52,32 @@
     box-shadow:0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent);
   }
 
+  /* Dropdown för vald domare */
+  .ref-select{
+    width:100%;
+    padding:6px 0;
+    border:none;
+    background:transparent;
+    color:var(--text);
+    font-size:18px;
+    font-weight:800;
+    outline:none;
+  }
+  .ref-select:focus{
+    outline:none;
+  }
+
   table{width:100%;border-collapse:collapse;background:var(--card);
         border:1px solid var(--border);border-radius:16px;overflow:hidden}
   thead{background:color-mix(in oklab,var(--accent-weak) 30%, var(--card));color:var(--accent)}
   th,td{padding:11px 12px;border-bottom:1px solid var(--border);text-align:left}
   th{font-weight:800;text-transform:uppercase;letter-spacing:.3px}
+
+  /* Datumkolumn – bredare och ingen radbrytning */
+  th:first-child, td:first-child{
+    white-space:nowrap;
+    width:120px;
+  }
 
   .kpi{font-size:22px;font-weight:900}
 
@@ -93,7 +114,9 @@
     </div>
     <div class="card">
       <div class="muted">Vald domare</div>
-      <div id="currentRef" class="kpi">—</div>
+      <select id="refSelect" class="ref-select">
+        <option value="">(välj domare)</option>
+      </select>
     </div>
     <div class="card">
       <div class="muted">Matcher i vyn</div>
@@ -113,7 +136,7 @@
         <thead><tr>
           <th>Datum</th><th>Serie</th><th>Hemmalag</th><th>Bortalag</th><th>Arena</th><th>Domarkollega</th>
         </tr></thead>
-        <tbody id="rows"><tr><td colspan="6" class="muted">Välj domare i listan.</td></tr></tbody>
+        <tbody id="rows"><tr><td colspan="6" class="muted">Välj domare i listan eller i menyn.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -121,11 +144,10 @@
 
 <script>
 (async function(){
-  // Läs alla CSV enligt /csv/files.json
   const files = await (await fetch("csv/files.json")).json();
   const texts = await Promise.all(files.map(f=>fetch("csv/"+f).then(r=>r.text())));
 
-  // Minimal CSV-parser (hanterar citattecken)
+  // Minimal CSV-parser
   function parseCSV(s){
     const out=[], re=/\s*(?:"([^"]*(?:""[^"]*)*)"|([^,"\r\n]*))\s*(,|\r?\n|$)/g; let m,row=[],head;
     const val=(a,b)=>(a||b||"").replace(/""/g,'"');
@@ -133,7 +155,7 @@
     head=out.shift()||[]; return out.map(r=>Object.fromEntries(head.map((h,i)=>[h.trim(),(r[i]??"").trim()])));
   }
 
-  // Normalisera poster (stöd för flera kolumnnamn)
+  // Normalisering
   function norm(rec){
     const g=k=>rec[k]??""; const first=x=>(x||"").split(/[ T]/)[0];
     const refs=(g("Referees")||g("Domare")||g("DomareLista")||"") ||
@@ -150,12 +172,19 @@
 
   const all = texts.flatMap(t=>parseCSV(t).map(norm)).filter(r=>r.date);
 
-  // Globalt datumintervall
+  // Dataintervall: max låst till 2025-10-31
+  const hardMax = "2025-10-31";
   const minDate = all.reduce((a,b)=> a && a<b.date ? a : b.date, all[0]?.date||"");
-  const maxDate = all.reduce((a,b)=> a && a>b.date ? a : b.date, all[0]?.date||"");
-  const $from = document.getElementById("from"), $to = document.getElementById("to");
+  const rawMax = all.reduce((a,b)=> a && a>b.date ? a : b.date, all[0]?.date||"");
+  const maxDate = rawMax && rawMax > hardMax ? hardMax : (rawMax || hardMax);
+
+  const $from = document.getElementById("from");
+  const $to   = document.getElementById("to");
+  const $refSelect = document.getElementById("refSelect");
+
   [$from,$to].forEach(el=>{ el.min=minDate; el.max=maxDate; });
-  $from.value=minDate; $to.value=maxDate;
+  $from.value=minDate;
+  $to.value   =maxDate;
 
   function clamp(){
     if($from.value<minDate) $from.value=minDate;
@@ -163,10 +192,15 @@
     if($from.value>$to.value) $from.value=$to.value;
   }
 
-  let currentRef="";
+  // Unik lista domare för dropdown (alfabetiskt)
+  const allRefs = [...new Set(all.flatMap(m=>m.referees))].sort((a,b)=>a.localeCompare(b,"sv"));
+  $refSelect.innerHTML =
+    '<option value="">(välj domare)</option>' +
+    allRefs.map(n=>`<option value="${n}">${n}</option>`).join("");
+
+  let currentRef = "";
   const $rows=document.getElementById("rows"),
         $kpi=document.getElementById("kpiCount"),
-        $who=document.getElementById("currentRef"),
         $top=document.getElementById("toplist");
 
   const inRange=(d,f,t)=>(!f||d>=f)&&(!t||d<=t);
@@ -174,20 +208,25 @@
   function renderTop(){
     clamp();
     const f=$from.value,t=$to.value,cnt=new Map();
-    for(const m of all){ if(!inRange(m.date,f,t)) continue; for(const r of m.referees) cnt.set(r,(cnt.get(r)||0)+1); }
+    for(const m of all){
+      if(!inRange(m.date,f,t)) continue;
+      for(const r of m.referees) cnt.set(r,(cnt.get(r)||0)+1);
+    }
     const arr=[...cnt.entries()].sort((a,b)=>b[1]-a[1]);
     if(!arr.length){ $top.textContent="Inga matcher i valt intervall."; return; }
-    $top.innerHTML=arr.map(([name,n])=>`
+
+    $top.innerHTML = arr.map(([name,n])=>`
       <div class="item" data-ref="${name}">
         <span>${name}</span><span class="pill">${n}</span>
       </div>`).join("");
 
-    // klick -> välj domare + markera aktiv
-    $top.querySelectorAll(".item").forEach(el=>{
+    const items = $top.querySelectorAll(".item");
+    items.forEach(el=>{
+      if(el.dataset.ref === currentRef) el.classList.add("active");
       el.onclick=()=>{
-        currentRef=el.dataset.ref;
-        $who.textContent=currentRef;
-        $top.querySelectorAll(".item").forEach(i=>i.classList.remove("active"));
+        currentRef = el.dataset.ref;
+        $refSelect.value = currentRef;
+        items.forEach(i=>i.classList.remove("active"));
         el.classList.add("active");
         renderMatches();
       };
@@ -197,12 +236,20 @@
   function renderMatches(){
     clamp();
     const f=$from.value,t=$to.value;
-    const rows=all.filter(m=>(!currentRef||m.referees.includes(currentRef))&&inRange(m.date,f,t))
-                  .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
-    $kpi.textContent=currentRef?rows.length:"—";
-    if(!currentRef){ $rows.innerHTML=`<tr><td colspan="6" class="muted">Välj domare i listan.</td></tr>`; return; }
-    if(!rows.length){ $rows.innerHTML=`<tr><td colspan="6" class="muted">Inga matcher för ${currentRef} i detta intervall.</td></tr>`; return; }
-    $rows.innerHTML=rows.map(m=>{
+    const rows=all
+      .filter(m=>(!currentRef || m.referees.includes(currentRef)) && inRange(m.date,f,t))
+      .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+    $kpi.textContent = currentRef ? rows.length : "—";
+
+    if(!currentRef){
+      $rows.innerHTML=`<tr><td colspan="6" class="muted">Välj domare i listan eller i menyn.</td></tr>`;
+      return;
+    }
+    if(!rows.length){
+      $rows.innerHTML=`<tr><td colspan="6" class="muted">Inga matcher för ${currentRef} i detta intervall.</td></tr>`;
+      return;
+    }
+    $rows.innerHTML = rows.map(m=>{
       const others=(m.referees||[]).filter(r=>r!==currentRef);
       return `<tr>
         <td>${m.date}</td><td>${m.series}</td><td>${m.home}</td><td>${m.away}</td><td>${m.arena}</td>
@@ -211,13 +258,25 @@
     }).join("");
   }
 
-  // Reagera direkt vid ändring/skrivning
+  // Datumändringar
   ["input","change","blur"].forEach(evt=>{
     $from.addEventListener(evt, ()=>{ clamp(); renderTop(); renderMatches(); });
     $to.addEventListener(evt,   ()=>{ clamp(); renderTop(); renderMatches(); });
   });
 
-  clamp(); renderTop(); renderMatches();
+  // Dropdownändring
+  $refSelect.addEventListener("change", ()=>{
+    currentRef = $refSelect.value || "";
+    // uppdatera highlight i listan
+    $top.querySelectorAll(".item").forEach(i=>{
+      i.classList.toggle("active", i.dataset.ref === currentRef);
+    });
+    renderMatches();
+  });
+
+  clamp();
+  renderTop();
+  renderMatches();
 })();
 </script>
 </html>
