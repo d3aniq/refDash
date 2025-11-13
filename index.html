@@ -274,8 +274,8 @@
 
   const all = texts.flatMap(t=>parseCSV(t).map(norm)).filter(r=>r.date);
 
-  // Dataintervall: max låst till 2025-10-31
-  const hardMax = "2025-10-31";
+  // Dataintervall: max låst till 2025-11-12
+  const hardMax = "2025-11-12";
   const minDate = all.reduce((a,b)=> a && a<b.date ? a : b.date, all[0]?.date||"");
   const rawMax = all.reduce((a,b)=> a && a>b.date ? a : b.date, all[0]?.date||"");
   const maxDate = rawMax && rawMax > hardMax ? hardMax : (rawMax || hardMax);
