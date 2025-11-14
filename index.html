@@ -5,12 +5,11 @@
 <title>Västsvensk domarstatistik</title>
 
 <style>
-  /* ===== Lätt, modern palett (endast ljust tema) ===== */
   :root{
     --bg:#f7f9fc; --card:#ffffff; --text:#0f172a; --muted:#6b7280; --border:#e6e9f2;
-    --accent:#6d28d9;      /* indigo-violett */
-    --accent-2:#9333ea;    /* gradientslut */
-    --accent-weak:#ede9fe; /* bakgrundston */
+    --accent:#6d28d9;
+    --accent-2:#9333ea;
+    --accent-weak:#ede9fe;
   }
 
   *{box-sizing:border-box}
@@ -21,7 +20,6 @@
   }
   .wrap{max-width:1100px;margin:auto}
 
-  /* Titel med gradient */
   h1{
     font-size:30px;margin:14px 0 18px;text-align:center;font-weight:900;letter-spacing:.4px;
     background:linear-gradient(90deg,var(--accent),var(--accent-2));
@@ -37,20 +35,6 @@
   }
   .muted{color:var(--muted);font-size:12px;margin-bottom:6px}
 
-  input[type=date]{
-    width:100%;padding:12px 14px;background:var(--card);color:var(--text);
-    border:1px solid var(--border);border-radius:10px;outline:none;
-    transition:border-color .15s, box-shadow .15s;
-    font-size:14px;
-    appearance:none;
-    -webkit-appearance:none;
-  }
-  input[type=date]:focus{
-    border-color:var(--accent);
-    box-shadow:0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent);
-  }
-
-  /* Dropdown-stil (återanvänds för serie + domare) */
   .ref-select{
     width:100%;
     padding:6px 0;
@@ -61,15 +45,26 @@
     font-weight:800;
     outline:none;
   }
-  .ref-select:focus{
-    outline:none;
-  }
 
-  /* Tabell */
-  .table-wrap{
+  .clear-btn{
     width:100%;
-    overflow-x:hidden;           /* inget som sticker ut horisontellt */
+    padding:10px 12px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:color-mix(in oklab,var(--accent-weak) 60%, var(--card));
+    color:var(--accent);
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+    transition:background .15s, box-shadow .15s, transform .05s;
   }
+  .clear-btn:hover{
+    background:color-mix(in oklab,var(--accent-weak) 80%, var(--card));
+    box-shadow:0 3px 10px rgba(0,0,0,.06);
+  }
+  .clear-btn:active{ transform:translateY(1px); }
+
+  .table-wrap{ width:100%; overflow-x:hidden; }
   table{
     width:100%;
     border-collapse:collapse;background:var(--card);
@@ -79,12 +74,7 @@
   thead{background:color-mix(in oklab,var(--accent-weak) 30%, var(--card));color:var(--accent)}
   th,td{padding:11px 12px;border-bottom:1px solid var(--border);text-align:left}
   th{font-weight:800;text-transform:uppercase;letter-spacing:.3px}
-
-  /* Datumkolumn – bredare och ingen radbrytning (desktop) */
-  th:first-child, td:first-child{
-    white-space:nowrap;
-    width:120px;
-  }
+  th:first-child, td:first-child{white-space:nowrap;width:120px;}
 
   .list{
     max-height:420px;overflow:auto;border:1px solid var(--border);
@@ -107,39 +97,16 @@
     border:1px solid color-mix(in oklab,var(--accent) 25%, var(--border));
   }
 
-  /* ========= Mobiloptimering ========= */
   @media (max-width:600px){
-    body{
-      margin:8px;
-      font-size:14px;
-    }
-    h1{
-      font-size:24px;
-      margin:10px 0 14px;
-    }
-    .card{
-      padding:10px 12px;
-      border-radius:14px;
-      box-shadow:0 2px 8px rgba(0,0,0,.05);
-    }
-    .list{
-      max-height:320px;
-    }
-    th,td{
-      font-size:13px;
-      padding:8px 8px;
-    }
-    .ref-select{
-      font-size:16px;
-    }
+    body{ margin:8px; font-size:14px; }
+    h1{ font-size:24px; margin:10px 0 14px; }
+    .card{ padding:10px 12px; border-radius:14px; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+    .list{ max-height:320px; }
+    th,td{ font-size:13px; padding:8px 8px; }
+    .ref-select{ font-size:16px; }
 
-    /* --- MATCHKORT (MOBILE LAYOUT) --- */
-    .table-wrap table{
-      border:none;
-    }
-    thead{
-      display:none;   /* Dölj tabellhuvud på mobil */
-    }
+    .table-wrap table{ border:none; }
+    thead{ display:none; }
 
     tbody tr{
       display:block;
@@ -147,7 +114,7 @@
       margin-bottom:14px;
       border-radius:14px;
       padding:10px 12px;
-      box-shadow:0 3px 10px rgba(0,0,0,.08); /* box shadow per kort */
+      box-shadow:0 3px 10px rgba(0,0,0,.08);
       border:1px solid var(--border);
     }
 
@@ -159,7 +126,6 @@
       word-break:break-word;
     }
 
-    /* Datum – egen rad med värdet till höger */
     td[data-label="Datum"]{
       font-weight:700;
       font-size:14px;
@@ -174,7 +140,6 @@
       margin-right:10px;
     }
 
-    /* Övriga fält – label till vänster, värde till höger */
     td:not([data-label="Datum"])::before{
       content:attr(data-label);
       font-weight:600;
@@ -187,21 +152,12 @@
 <div class="wrap">
   <h1>Västsvensk domarstatistik</h1>
 
-  <!-- Filter -->
   <div class="row filters" id="filters">
     <div class="card">
-      <div class="muted">Domare</div>
-      <select id="refSelect" class="ref-select">
-        <option value="">(alla domare)</option>
+      <div class="muted">Säsong (2025/26 t.o.m. 2025-10-31)</div>
+      <select id="seasonSelect" class="ref-select">
+        <option value="">(alla säsonger)</option>
       </select>
-    </div>
-    <div class="card">
-      <div class="muted">Från</div>
-      <input type="date" id="from" aria-label="Från datum">
-    </div>
-    <div class="card">
-      <div class="muted">Till</div>
-      <input type="date" id="to" aria-label="Till datum">
     </div>
     <div class="card">
       <div class="muted">Serie</div>
@@ -209,16 +165,25 @@
         <option value="">(alla serier)</option>
       </select>
     </div>
+    <div class="card">
+      <div class="muted">Domare</div>
+      <select id="refSelect" class="ref-select">
+        <option value="">(alla domare)</option>
+      </select>
+    </div>
+    <div class="card">
+      <div class="muted">Filter</div>
+      <button id="clearBtn" class="clear-btn">Rensa</button>
+    </div>
   </div>
 
-  <!-- Lista + tabell -->
   <div class="row">
     <div class="card">
-      <div class="muted">Antal matcher per domare (inom datumintervall och vald serie)</div>
+      <div class="muted">Antal matcher per domare (inom vald säsong eller serie)</div>
       <div id="toplist" class="list">Laddar…</div>
     </div>
     <div class="card" style="grid-column:1;">
-      <div class="muted">Matchlista för vald domare (inom datumintervall och vald serie)</div>
+      <div class="muted">Matchlista för vald domare (inom vald säsong eller serie)</div>
       <div class="table-wrap">
         <table>
           <thead><tr>
@@ -236,11 +201,11 @@
 <script>
 (async function(){
   const files = await (await fetch("csv/files.json")).json();
-  const texts = await Promise.all(files.map(f=>fetch("csv/"+f).then(r=>r.text())));
+  const texts = await Promise.all(files.map(f => fetch("csv/" + f).then(r => r.text())));
 
-  // Minimal CSV-parser
   function parseCSV(s){
-    const out=[], re=/\s*(?:"([^"]*(?:""[^"]*)*)"|([^,"\r\n]*))\s*(,|\r?\n|$)/g; let m,row=[],head;
+    const out=[], re=/\s*(?:"([^"]*(?:""[^"]*)*)"|([^,"\r\n]*))\s*(,|\r?\n|$)/g;
+    let m,row=[],head;
     const val=(a,b)=>(a||b||"").replace(/""/g,'"');
     while((m=re.exec(s))){
       row.push(val(m[1],m[2]));
@@ -253,7 +218,6 @@
     return out.map(r=>Object.fromEntries(head.map((h,i)=>[h.trim(),(r[i]??"").trim()])));
   }
 
-  // Normalisering
   function norm(rec){
     const g=k=>rec[k]??""; const first=x=>(x||"").split(/[ T]/)[0];
     const refs=(g("Referees")||g("Domare")||g("DomareLista")||"") ||
@@ -269,57 +233,90 @@
     };
   }
 
-  const all = texts.flatMap(t=>parseCSV(t).map(norm)).filter(r=>r.date);
+  const all = texts.flatMap(t => parseCSV(t).map(norm)).filter(r => r.date);
 
-  // Dataintervall: max låst till 2025-10-31
-  const hardMax = "2025-10-31";
-  const minDate = all.reduce((a,b)=> a && a<b.date ? a : b.date, all[0]?.date||"");
-  const rawMax = all.reduce((a,b)=> a && a>b.date ? a : b.date, all[0]?.date||"");
-  const maxDate = rawMax && rawMax > hardMax ? hardMax : (rawMax || hardMax);
-
-  const $from = document.getElementById("from");
-  const $to   = document.getElementById("to");
-  const $refSelect = document.getElementById("refSelect");
+  const $seasonSelect = document.getElementById("seasonSelect");
+  const $refSelect    = document.getElementById("refSelect");
   const $seriesSelect = document.getElementById("seriesSelect");
-  const $rows=document.getElementById("rows"),
-        $top=document.getElementById("toplist");
+  const $rows         = document.getElementById("rows");
+  const $top          = document.getElementById("toplist");
+  const $clearBtn     = document.getElementById("clearBtn");
 
-  [$from,$to].forEach(el=>{ el.min=minDate; el.max=maxDate; });
-  $from.value=minDate;
-  $to.value   =maxDate;
-
-  let currentRef = "";
+  let currentSeason = "";
+  let currentRef    = "";
   let currentSeries = "";
 
-  function clamp(){
-    if($from.value<minDate) $from.value=minDate;
-    if($to.value>maxDate)   $to.value=maxDate;
-    if($from.value>$to.value) $from.value=$to.value;
+  // Bygg säsonger (1 juli – 30 juni)
+  const seasons = new Map(); // label -> {start,end}
+  for(const m of all){
+    if(!m.date) continue;
+    const year = parseInt(m.date.slice(0,4),10);
+    const md   = m.date.slice(5); // "MM-DD"
+    const startYear = (md >= "07-01") ? year : year - 1;
+    const nextYear  = startYear + 1;
+    const label = startYear + "/" + String(nextYear).slice(-2);
+    if(!seasons.has(label)){
+      seasons.set(label,{
+        start: startYear + "-07-01",
+        end:   nextYear  + "-06-30"
+      });
+    }
   }
 
-  const inRange=(d,f,t)=>(!f||d>=f)&&(!t||d<=t);
+  const seasonLabels = [...seasons.keys()]
+    .sort((a,b)=>seasons.get(a).start.localeCompare(seasons.get(b).start));
+  const latestSeason = seasonLabels[seasonLabels.length-1] || "";
 
-  // Unik lista domare för dropdown (alfabetiskt)
-  const allRefs = [...new Set(all.flatMap(m=>m.referees))].sort((a,b)=>a.localeCompare(b,"sv"));
-  $refSelect.innerHTML =
-    '<option value="">(alla domare)</option>' +
-    allRefs.map(n=>`<option value="${n}">${n}</option>`).join("");
+  $seasonSelect.innerHTML =
+    '<option value="">(alla säsonger)</option>' +
+    seasonLabels.map(s => '<option value="'+s+'">'+s+'</option>').join("");
 
-  // Uppdatera serielista beroende på datum + ev. vald domare
-  function updateSeriesOptions(){
-    clamp();
-    const f=$from.value,t=$to.value;
+  if(latestSeason){
+    currentSeason = latestSeason;
+    $seasonSelect.value = latestSeason;
+  }
+
+  function inCurrentSeason(date){
+    if(!currentSeason) return true;
+    const s = seasons.get(currentSeason);
+    if(!s) return true;
+    return (!s.start || date >= s.start) && (!s.end || date <= s.end);
+  }
+
+  function updateRefOptions(){
     const set = new Set();
     for(const m of all){
-      if(!inRange(m.date,f,t)) continue;
+      if(!inCurrentSeason(m.date)) continue;
+      if(currentSeries && m.series !== currentSeries) continue;
+      for(const r of m.referees) set.add(r);
+    }
+    const prev = currentRef;
+    const arr = [...set].sort((a,b)=>a.localeCompare(b,"sv"));
+    $refSelect.innerHTML =
+      '<option value="">(alla domare)</option>' +
+      arr.map(n => '<option value="'+n+'">'+n+'</option>').join("");
+
+    if(prev && set.has(prev)){
+      currentRef = prev;
+      $refSelect.value = prev;
+    }else{
+      currentRef = "";
+      $refSelect.value = "";
+    }
+  }
+
+  function updateSeriesOptions(){
+    const set = new Set();
+    for(const m of all){
+      if(!inCurrentSeason(m.date)) continue;
       if(currentRef && !m.referees.includes(currentRef)) continue;
       if(m.series) set.add(m.series);
     }
     const prev = currentSeries;
-    const arr=[...set].sort((a,b)=>a.localeCompare(b,"sv"));
+    const arr = [...set].sort((a,b)=>a.localeCompare(b,"sv"));
     $seriesSelect.innerHTML =
       '<option value="">(alla serier)</option>' +
-      arr.map(s=>`<option value="${s}">${s}</option>`).join("");
+      arr.map(s => '<option value="'+s+'">'+s+'</option>').join("");
 
     if(prev && set.has(prev)){
       currentSeries = prev;
@@ -331,111 +328,123 @@
   }
 
   function renderTop(){
-    clamp();
-    const f=$from.value,t=$to.value,cnt=new Map();
+    const cnt = new Map();
     for(const m of all){
-      if(!inRange(m.date,f,t)) continue;
+      if(!inCurrentSeason(m.date)) continue;
       if(currentSeries && m.series !== currentSeries) continue;
-      for(const r of m.referees) cnt.set(r,(cnt.get(r)||0)+1);
+      for(const r of m.referees){
+        cnt.set(r,(cnt.get(r)||0)+1);
+      }
     }
-    const arr=[...cnt.entries()].sort((a,b)=>b[1]-a[1]);
-    if(!arr.length){ $top.textContent="Inga matcher i valt intervall."; return; }
-
-    $top.innerHTML = arr.map(([name,n])=>`
-      <div class="item" data-ref="${name}">
-        <span>${name}</span><span class="pill">${n}</span>
-      </div>`).join("");
+    const arr = [...cnt.entries()].sort((a,b)=>b[1]-a[1]);
+    if(!arr.length){
+      $top.textContent = "Inga matcher i vald filtrering.";
+      return;
+    }
+    $top.innerHTML = arr.map(([name,n]) =>
+      '<div class="item" data-ref="'+name+'">' +
+        '<span>'+name+'</span><span class="pill">'+n+'</span>' +
+      '</div>'
+    ).join("");
 
     const items = $top.querySelectorAll(".item");
     items.forEach(el=>{
       if(el.dataset.ref === currentRef) el.classList.add("active");
-      el.onclick=()=>{
+      el.onclick = ()=>{
         currentRef = el.dataset.ref;
         $refSelect.value = currentRef;
         updateSeriesOptions();
         renderTop();
         renderMatches();
-        const active = $top.querySelector(`.item[data-ref="${currentRef}"]`);
-        if(active){ active.scrollIntoView({behavior:"smooth", block:"center"}); }
+        const active = $top.querySelector('.item[data-ref="'+currentRef+'"]');
+        if(active) active.scrollIntoView({behavior:"smooth", block:"center"});
       };
     });
   }
 
   function renderMatches(){
-    clamp();
-    const f=$from.value,t=$to.value;
-    const rows=all
-      .filter(m=>
+    const rows = all
+      .filter(m =>
+        inCurrentSeason(m.date) &&
         (!currentRef || m.referees.includes(currentRef)) &&
-        inRange(m.date,f,t) &&
         (!currentSeries || m.series === currentSeries)
       )
       .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
 
     if(!currentRef){
-      $rows.innerHTML=`<tr><td colspan="6" class="muted">Välj domare i listan eller menyn</td></tr>`;
+      $rows.innerHTML = '<tr><td colspan="6" class="muted">Välj domare i listan eller i menyn</td></tr>';
       return;
     }
     if(!rows.length){
-      $rows.innerHTML=`<tr><td colspan="6" class="muted">Inga matcher för ${currentRef} i detta intervall.</td></tr>`;
+      $rows.innerHTML = '<tr><td colspan="6" class="muted">Inga matcher för '+currentRef+' i vald filtrering.</td></tr>';
       return;
     }
     $rows.innerHTML = rows.map(m=>{
-      const others=(m.referees||[]).filter(r=>r!==currentRef);
-      return `<tr>
-        <td data-label="Datum">${m.date}</td>
-        <td data-label="Serie">${m.series}</td>
-        <td data-label="Hemmalag">${m.home}</td>
-        <td data-label="Bortalag">${m.away}</td>
-        <td data-label="Arena">${m.arena}</td>
-        <td data-label="Domarkollega">${others.join(", ")||"—"}</td>
-      </tr>`;
+      const others = (m.referees||[]).filter(r=>r!==currentRef);
+      return (
+        '<tr>' +
+          '<td data-label="Datum">'+m.date+'</td>' +
+          '<td data-label="Serie">'+m.series+'</td>' +
+          '<td data-label="Hemmalag">'+m.home+'</td>' +
+          '<td data-label="Bortalag">'+m.away+'</td>' +
+          '<td data-label="Arena">'+m.arena+'</td>' +
+          '<td data-label="Domarkollega">'+(others.join(", ")||"—")+'</td>' +
+        '</tr>'
+      );
     }).join("");
   }
 
-  // Datumändringar
-  ["input","change","blur"].forEach(evt=>{
-    $from.addEventListener(evt, ()=>{ clamp(); updateSeriesOptions(); renderTop(); renderMatches(); });
-    $to.addEventListener(evt,   ()=>{ clamp(); updateSeriesOptions(); renderTop(); renderMatches(); });
-  });
-
-/*   // Serieändring
-  $seriesSelect.addEventListener("change", ()=>{
-    currentSeries = $seriesSelect.value || "";
+  $seasonSelect.addEventListener("change", ()=>{
+    currentSeason = $seasonSelect.value || "";
+    updateRefOptions();
+    updateSeriesOptions();
     renderTop();
     renderMatches();
-  }); */
-
-  // Serieändring
-  $seriesSelect.addEventListener("change", ()=>{
-    currentSeries = $seriesSelect.value || "";
-  
-    renderTop();
-    renderMatches();
-
-    if (currentRef) {
-      // Om en domare är vald: scrolla till domaren i listan (samma beteende som domar-dropdown)
-      const active = $top.querySelector(`.item[data-ref="${currentRef}"]`);
-      if (active) {
-        active.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    } else {
-      // Ingen domare vald: visa listan från toppen
+    if(currentRef){
+      const active = $top.querySelector('.item[data-ref="'+currentRef+'"]');
+      if(active) active.scrollIntoView({behavior:"smooth", block:"center"});
+    }else{
       $top.scrollTop = 0;
     }
   });
 
-  // Dropdownändring – domare
+  $seriesSelect.addEventListener("change", ()=>{
+    currentSeries = $seriesSelect.value || "";
+    updateRefOptions();
+    renderTop();
+    renderMatches();
+    if(currentRef){
+      const active = $top.querySelector('.item[data-ref="'+currentRef+'"]');
+      if(active) active.scrollIntoView({behavior:"smooth", block:"center"});
+    }else{
+      $top.scrollTop = 0;
+    }
+  });
+
   $refSelect.addEventListener("change", ()=>{
     currentRef = $refSelect.value || "";
     updateSeriesOptions();
     renderTop();
     renderMatches();
-    const active = $top.querySelector(`.item[data-ref="${currentRef}"]`);
-    if(active){ active.scrollIntoView({behavior:"smooth", block:"center"}); }
+    const active = $top.querySelector('.item[data-ref="'+currentRef+'"]');
+    if(active) active.scrollIntoView({behavior:"smooth", block:"center"});
   });
 
-  clamp();
+  $clearBtn.addEventListener("click", ()=>{
+    currentSeason = "";
+    currentRef    = "";
+    currentSeries = "";
+    $seasonSelect.value = "";
+    $refSelect.value    = "";
+    $seriesSelect.value = "";
+    updateRefOptions();
+    updateSeriesOptions();
+    renderTop();
+    renderMatches();
+    $top.scrollTop = 0;
+  });
+
+  updateRefOptions();
   updateSeriesOptions();
   renderTop();
   renderMatches();
