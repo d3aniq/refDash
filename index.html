@@ -398,7 +398,8 @@
         (!currentRef || m.referees.includes(currentRef)) &&
         (!currentSeries || m.series === currentSeries)
       )
-      .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+      //.sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+      .sort((a,b)=>(b.date||"").localeCompare(a.date||""));
 
     if(!currentRef){
       $rows.innerHTML = '<tr><td colspan="6" class="muted">Välj domare i listan eller i menyn</td></tr>';
