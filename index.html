@@ -553,8 +553,8 @@
 
     function renderTopMiniLists(rows){
       if(!currentRef){
-        $topSeries.innerHTML     = '<span class="muted">Välj domare i listan eller i menyn</span>';
-        $topColleagues.innerHTML = '<span class="muted">Välj domare i listan eller i menyn</span>';
+        $topSeries.innerHTML     = '<span class="muted"></span>';
+        $topColleagues.innerHTML = '<span class="muted"></span>';
         return;
       }
       if(!rows.length){
@@ -597,7 +597,7 @@
 
     function renderTopSeasons(rows){
       if(!currentRef){
-        $topSeasons.innerHTML = '<span class="muted">Välj domare i listan eller i menyn</span>';
+        $topSeasons.innerHTML = '<span class="muted"></span>';
         return;
       }
       if(!rows.length){
